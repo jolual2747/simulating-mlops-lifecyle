@@ -1,9 +1,17 @@
 import pandas as pd
 import numpy as np
 from sklearn.feature_selection import SelectKBest, chi2, f_classif
-from sklearn.cluster import SpectralClustering
+from sklearn.cluster import SpectralClustering, KMeans
 from sklearn.preprocessing import MinMaxScaler
 from sklearn.tree import DecisionTreeClassifier
+from sklearn.svm import SVC
+from sklearn.metrics import accuracy_score
+from sklearn.preprocessing import OrdinalEncoder
+from sklearn.model_selection import train_test_split, GridSearchCV
+import warnings
+
+warnings.filterwarnings('ignore')
+
 
 def num_and_cat_cols(df):    
     # num cols should be float or int, if int should have less than 5 unique values
@@ -27,17 +35,46 @@ def create_clusters(df):
     num_df = pd.DataFrame(scaler.fit_transform(nums_df), columns=num_cols)
     cat_df = pd.get_dummies(cats_df, dtype= 'float')
     aux_df = pd.concat([num_df, cat_df], axis = 1)
-    spectral = SpectralClustering(n_clusters=2, n_jobs=-1, affinity= 'rbf', gamma = 0.05, random_state = 1234, assign_labels = 'kmeans')
-    aux_df['label'] = spectral.fit_predict(aux_df)   
-    aux_df.to_csv('datalake/customers_clustered.csv', index=False)
+    spectral = SpectralClustering(n_clusters=2, n_jobs=-1, affinity= 'nearest_neighbors', n_neighbors=7, random_state = 1234, assign_labels = 'kmeans')
+    df['label'] = spectral.fit_predict(aux_df)   
+    df.to_csv('datalake/customers_clustered.csv', index=False)
     print('Dataset with clusters succesfully saved to Datalake!')
 
 def feature_engineering(df):
-    print('Initiliazing training...')
+    print('Initiliazing feature engineering...')
     num_cols, cat_cols = num_and_cat_cols(df)
 
+    # numerical features
+    f_test = SelectKBest(f_classif, k = 3).set_output(transform='pandas')
+    best_num_features = f_test.fit_transform(df[num_cols], df['label'])
 
+    # categorical features
+    encoder = OrdinalEncoder().set_output(transform='pandas')
+    encoded = encoder.fit_transform(df[cat_cols])
+    chi2_test = SelectKBest(chi2, k = 3).set_output(transform='pandas')
+    best_cat_features = chi2_test.fit_transform(encoded, df['label'])
+    aux = pd.concat([best_num_features, best_cat_features], axis = 1)
+    return pd.get_dummies(aux, dtype='float')
 
-if __name__ == '__main__':
+def train_model(df):
+    features = feature_engineering(df)
+    scaler = MinMaxScaler()
+    print('Initializing training...')
+    X, y = features.drop(columns=['label']), features['label'].values
+    X_train, X_test, y_train, y_test = train_test_split(X, y)
+    tree = DecisionTreeClassifier()
+    param_grid = {'max_depth': [3, 5, 7, 10], 'max_leaf_nodes': [3, 5, 7, 10], 'min_samples_split': [2,3,6]}
+    grid = GridSearchCV(tree, param_grid=param_grid, n_jobs=-1, cv = 5, verbose=0, scoring='roc_auc')
+    grid.fit(X_train, y_train)
+    model = grid.best_estimator_
+    print(f"Params of best model: {grid.best_params_} ")
+    print(f"Accuracy of model: {accuracy_score(y_test, model.predict(X_test)):.2%}") 
+
+def main():
     df = pd.read_csv('datalake/customers_info.csv')
     create_clusters(df)
+    clustered_data = pd.read_csv('datalake/customers_clustered.csv')
+    train_model(clustered_data)
+
+if __name__ == '__main__':
+    main()
