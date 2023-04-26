@@ -10,6 +10,7 @@ from sklearn.preprocessing import OrdinalEncoder, MinMaxScaler
 from sklearn.model_selection import train_test_split, GridSearchCV
 from sklearn.svm import SVC
 from sklearn.pipeline import Pipeline
+from sklearn.compose import ColumnTransformer
 import warnings
 
 
@@ -61,21 +62,22 @@ def feature_engineering(df):
     return pd.get_dummies(aux, dtype='float64')
 
 def train_model(df):
-    num_cols, cat_cols = num_and_cat_cols(df)
-    scaler = MinMaxScaler().set_output(transform='pandas')
-    scaled = scaler.fit_transform(df[num_cols])
-    new_df = pd.concat([scaled, df[cat_cols]], axis=1)
-    features = feature_engineering(new_df)
+    features = feature_engineering(df)
     print('Initializing training...')
-    X, y = features.drop(columns=['label']), features['label'].values
+    scaler = MinMaxScaler().set_output(transform='pandas')
+    scaled = scaler.fit_transform(features.drop(columns=['label']))
+    X, y = scaled, features['label'].values
     X_train, X_test, y_train, y_test = train_test_split(X, y)
     tree = DecisionTreeClassifier()
     param_grid = {'max_depth': [20, 25]}
     grid = GridSearchCV(tree, param_grid=param_grid, n_jobs=-1, cv = 5, verbose=0, scoring='accuracy')
     grid.fit(X_train, y_train)
     model = grid.best_estimator_
-    print(f"Params of best model: {grid.best_params_} ")
-    print(f"Accuracy of model: {accuracy_score(y_test, model.predict(X_test)):.2%}") 
+    best_params = grid.best_params_
+    print(f"Params of best model: {best_params} ")
+    print(f"Accuracy of model: {accuracy_score(y_test, model.predict(X_test)):.2%}")
+    pipeline = Pipeline([('scaler', MinMaxScaler()), ('model', DecisionTreeClassifier(max_depth=best_params['max_depth']))])
+    pipeline.fit(features.drop(columns=['label']), features['label'].values)
 
 def main():
     df = pd.read_csv('datalake/customers_info.csv')
