@@ -8,6 +8,8 @@ ipykernel = "*"
 pandas = "*"
 numpy = "*"
 scikit-learn = "*"
+flask = "*"
+requests = "*"
 
 [dev-packages]
 
