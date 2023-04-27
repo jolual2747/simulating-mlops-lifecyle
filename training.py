@@ -1,14 +1,13 @@
 import pandas as pd
 import numpy as np
 from sklearn.feature_selection import SelectKBest, chi2, f_classif
-from sklearn.cluster import SpectralClustering, KMeans
-from sklearn.preprocessing import MinMaxScaler
+from sklearn.cluster import SpectralClustering
+from sklearn.preprocessing import MinMaxScaler, OneHotEncoder
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.svm import SVC
 from sklearn.metrics import accuracy_score, silhouette_score
 from sklearn.preprocessing import OrdinalEncoder, MinMaxScaler
 from sklearn.model_selection import train_test_split, GridSearchCV
-from sklearn.svm import SVC
 from sklearn.pipeline import Pipeline
 from sklearn.compose import ColumnTransformer
 import warnings
@@ -58,24 +57,30 @@ def feature_engineering(df):
     chi2_test = SelectKBest(chi2, k = 3).set_output(transform='pandas')
     best_cat_features = chi2_test.fit_transform(encoded, df['label'])
     aux = pd.concat([best_num_features, df[best_cat_features.columns.tolist()]], axis = 1)
-    return pd.get_dummies(aux, dtype='float64')
+    return aux
 
 def train_model(df):
     features = feature_engineering(df)
     print('Initializing training...')
     X, y = features.drop(columns=['label']), features['label'].values
+    num_cols, cat_cols = num_and_cat_cols(X)
+    trans = ColumnTransformer(
+        [("OHE", OneHotEncoder(handle_unknown='ignore'), cat_cols),
+         ("Scaler", MinMaxScaler(), num_cols)
+        ]
+    )
     X_train, X_test, y_train, y_test = train_test_split(X, y)
-    tree = DecisionTreeClassifier()
-    param_grid = {'max_depth': [20, 25]}
-    grid = GridSearchCV(tree, param_grid=param_grid, n_jobs=-1, cv = 5, verbose=0, scoring='accuracy')
+    pipeline = Pipeline([('transformer', trans), ('model', DecisionTreeClassifier())])    
+    param_grid = [{'model__max_depth': [20, 25]}]
+    grid = GridSearchCV(pipeline, param_grid=param_grid, n_jobs=-1, cv = 5, verbose=0, scoring='accuracy')
     grid.fit(X_train, y_train)
     best_params = grid.best_params_
-    pipeline = Pipeline([('scaler', MinMaxScaler()), ('model', DecisionTreeClassifier(max_depth=best_params['max_depth']))])
+    print(best_params)
+    pipeline = Pipeline([('transformer', trans), ('model', DecisionTreeClassifier(max_depth=best_params['model__max_depth']))])
     pipeline.fit(X_train, y_train)
     joblib.dump(pipeline, 'datalake/models/pipeline.joblib')
     print(f"Params of best model: {best_params} ")
     print(f"Accuracy of model: {accuracy_score(y_test, pipeline.predict(X_test)):.2%}")
-
 
 def main():
     df = pd.read_csv('datalake/tables/customers_info.csv')
