@@ -26,6 +26,6 @@ if results_t.pvalue < 0.05 or acc < 0.8:
         print(f'Age means are differents, p-value: {results_t.pvalue}, so now we have to re-train/re-fit!')
     elif acc < 0.8:
         print(f'Accuracy score is: {acc}, so now we have to re-train/re-fit!')
-    retrain()
+    retrain() # retrain model
 else:
     print('Accuracy scores are ok and mean values of records still the same!')
