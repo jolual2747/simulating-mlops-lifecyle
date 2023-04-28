@@ -79,7 +79,9 @@ def train_model(df):
     pipeline = Pipeline([('transformer', trans), ('model', DecisionTreeClassifier(max_depth=best_params['model__max_depth']))])
     pipeline.fit(X_train, y_train)
     joblib.dump(pipeline, 'datalake/models/pipeline.joblib')
-    print(f"Params of best model: {best_params} ")
+    features_seen_in_training = pipeline.feature_names_in_ 
+    joblib.dump(features_seen_in_training, 'datalake/models/features_in_training.joblib')
+    print(f"Params of best model: {best_params}")
     print(f"Accuracy of model: {accuracy_score(y_test, pipeline.predict(X_test)):.2%}")
 
 def main():
