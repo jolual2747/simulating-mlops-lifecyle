@@ -12,7 +12,6 @@ def hello_world():
 @app.route('/predict', methods = ['POST'])
 def get_prediction():
     features = request.get_json()
-    print(type(features))
     pred, prob = make_prediction(features)
     return jsonify({"class": str(pred), "prob":  prob})
 
