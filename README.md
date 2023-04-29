@@ -25,3 +25,10 @@ pipenv install
 
 ![Image1](images/architechture.png)
 
+### Next steps:
+
+- Deploy on cloud architechture.
+- Orchestrate with Apache Airflow.
+- Monitor with Graphana..
+
+
