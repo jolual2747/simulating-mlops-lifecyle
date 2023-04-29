@@ -6,7 +6,7 @@ So here we will find how to approximate the MLOps without cloud infrastructure, 
 
 ## Problem to solve:
 
-We have a dataset with customer raw data from a bank. We want to find groups through clustering and then use a classification algorithm to train a model that can make predictions on unseen data compute the probability of the classes.
+We have a dataset with customer raw data from a bank. We want to find groups through clustering and then use a classification algorithm to train a model that can make predictions on unseen data and compute the probability of the classes. In adittion, we want to deploy the model in order than can be accesed from other applications or systems anywhere via https (requests).
 
 ### Steps to replicate this repo:
 
